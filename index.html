@@ -60,7 +60,7 @@
     flex-direction:column;
     position: relative;
     padding-top: max(22px, env(safe-area-inset-top, 22px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: min(env(safe-area-inset-bottom, 0px), 16px);
   }
 
   .join{
@@ -282,7 +282,7 @@
     display:flex;
     align-items:flex-end;
     gap: 8px;
-    padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 8px));
+    padding: 12px 14px;
     background: var(--panel-raised);
     border-top: 1px solid rgba(255,255,255,0.06);
   }
