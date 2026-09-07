@@ -59,6 +59,7 @@
     display:flex;
     flex-direction:column;
     position: relative;
+    padding-top: max(22px, env(safe-area-inset-top, 22px));
   }
 
   .join{
@@ -226,7 +227,7 @@
   }
   .lightbox-bar{
     position:absolute;
-    top: 18px;
+    top: max(18px, env(safe-area-inset-top, 18px));
     right: 18px;
     display:flex;
     gap: 10px;
