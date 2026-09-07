@@ -389,7 +389,6 @@
 
 <div class="lightbox" id="lightbox">
   <div class="lightbox-bar">
-    <button class="lightbox-btn" id="lightboxDownload" title="ডাউনলোড করো">⬇</button>
     <button class="lightbox-btn" id="lightboxClose" title="বন্ধ করো">✕</button>
   </div>
   <img id="lightboxImg" src="" alt="">
@@ -437,7 +436,6 @@
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightboxImg');
   const lightboxClose = document.getElementById('lightboxClose');
-  const lightboxDownload = document.getElementById('lightboxDownload');
 
   function openLightbox(src){
     lightboxImg.src = src;
@@ -451,26 +449,7 @@
   lightbox.addEventListener('click', function(e){
     if(e.target === lightbox) closeLightbox();
   });
-  lightboxDownload.addEventListener('click', async function(){
-    if(!lightboxImg.src) return;
-    try{
-      if(navigator.canShare){
-        const res = await fetch(lightboxImg.src);
-        const blob = await res.blob();
-        const file = new File([blob], 'chat-photo-' + Date.now() + '.jpg', { type: blob.type || 'image/jpeg' });
-        if(navigator.canShare({ files: [file] })){
-          await navigator.share({ files: [file] });
-          return;
-        }
-      }
-    }catch(e){ /* fall through to direct download */ }
-    const a = document.createElement('a');
-    a.href = lightboxImg.src;
-    a.download = 'chat-photo-' + Date.now() + '.jpg';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  });
+
 
   function showToast(msg){
     toast.textContent = msg;
