@@ -239,15 +239,15 @@
     height: 42px;
     border-radius: 50%;
     border: none;
-    background: rgba(0,0,0,0.35);
-    color: var(--text);
+    background: rgba(255,255,255,0.18);
+    color: #f5f5f5;
     font-size: 1.1rem;
     display:flex;
     align-items:center;
     justify-content:center;
     cursor:pointer;
   }
-  .lightbox-btn:active{ background: rgba(0,0,0,0.5); }
+  .lightbox-btn:active{ background: rgba(255,255,255,0.32); }
   .bubble .time{
     display:block;
     font-size: 0.68rem;
@@ -451,8 +451,19 @@
   lightbox.addEventListener('click', function(e){
     if(e.target === lightbox) closeLightbox();
   });
-  lightboxDownload.addEventListener('click', function(){
+  lightboxDownload.addEventListener('click', async function(){
     if(!lightboxImg.src) return;
+    try{
+      if(navigator.canShare){
+        const res = await fetch(lightboxImg.src);
+        const blob = await res.blob();
+        const file = new File([blob], 'chat-photo-' + Date.now() + '.jpg', { type: blob.type || 'image/jpeg' });
+        if(navigator.canShare({ files: [file] })){
+          await navigator.share({ files: [file] });
+          return;
+        }
+      }
+    }catch(e){ /* fall through to direct download */ }
     const a = document.createElement('a');
     a.href = lightboxImg.src;
     a.download = 'chat-photo-' + Date.now() + '.jpg';
