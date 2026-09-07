@@ -8,19 +8,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <style>
   :root{
-    --bg: #171923;
-    --panel: #20232f;
-    --panel-raised: #262a38;
-    --sent: #e8785a;
-    --sent-text: #1c1512;
-    --received: #2a2e3d;
-    --text: #f2efe9;
-    --text-muted: #8b8fa3;
-    --gold: #d9a867;
-    --danger: #d97b6c;
-    --online: #7bc99a;
+    --bg: #e6ecf0;
+    --panel: #fdfefe;
+    --panel-raised: #edf2f5;
+    --sent: #2f6fa8;
+    --sent-text: #ffffff;
+    --received: #d7ecf2;
+    --text: #16324f;
+    --text-muted: #718696;
+    --gold: #c9a97a;
+    --danger: #c1685c;
+    --online: #2fa6ba;
   }
   *{ box-sizing: border-box; }
   html,body{ height:100%; }
@@ -60,7 +61,7 @@
     flex-direction:column;
     position: relative;
     padding-top: max(22px, env(safe-area-inset-top, 22px));
-    padding-bottom: min(env(safe-area-inset-bottom, 0px), 16px);
+    padding-bottom: max(28px, env(safe-area-inset-bottom, 28px));
   }
 
   .join{
@@ -95,7 +96,7 @@
   .field input{
     width:100%;
     background: var(--panel-raised);
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(0,0,0,0.08);
     color: var(--text);
     padding: 13px 14px;
     border-radius: 12px;
@@ -126,7 +127,7 @@
     font-size: 0.82rem;
     color: var(--text-muted);
     line-height:1.6;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    border-top: 1px solid rgba(0,0,0,0.06);
     padding-top: 16px;
   }
   .hint b{ color: var(--gold); font-weight:600; }
@@ -145,7 +146,7 @@
     justify-content:space-between;
     padding: 16px 18px;
     background: var(--panel-raised);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
   }
   .chat-header .room-info h2{
     font-family:'Fraunces', serif;
@@ -224,7 +225,7 @@
     max-width: 100%;
     max-height: 78vh;
     border-radius: 10px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
   }
   .lightbox-bar{
     position:absolute;
@@ -238,7 +239,7 @@
     height: 42px;
     border-radius: 50%;
     border: none;
-    background: rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.35);
     color: var(--text);
     font-size: 1.1rem;
     display:flex;
@@ -246,7 +247,7 @@
     justify-content:center;
     cursor:pointer;
   }
-  .lightbox-btn:active{ background: rgba(255,255,255,0.22); }
+  .lightbox-btn:active{ background: rgba(0,0,0,0.5); }
   .bubble .time{
     display:block;
     font-size: 0.68rem;
@@ -284,12 +285,12 @@
     gap: 8px;
     padding: 12px 14px;
     background: var(--panel-raised);
-    border-top: 1px solid rgba(255,255,255,0.06);
+    border-top: 1px solid rgba(0,0,0,0.06);
   }
   .composer input[type="text"]{
     flex:1;
     background: var(--bg);
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(0,0,0,0.08);
     color: var(--text);
     padding: 12px 14px;
     border-radius: 20px;
@@ -325,7 +326,7 @@
     padding: 8px 16px;
     border-radius: 10px;
     font-size: 0.8rem;
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(0,0,0,0.1);
     opacity:0;
     pointer-events:none;
     transition: opacity 0.2s;
@@ -406,6 +407,7 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+  const auth = firebase.auth();
 
   let name = '';
   let room = '';
@@ -462,6 +464,18 @@
     toast.classList.add('show');
     setTimeout(()=> toast.classList.remove('show'), 2800);
   }
+
+  joinBtn.disabled = true;
+  joinBtn.textContent = 'লোড হচ্ছে...';
+  auth.signInAnonymously().catch(function(){
+    joinError.textContent = 'সংযোগ করতে সমস্যা হয়েছে, পেজ রিলোড করো';
+  });
+  auth.onAuthStateChanged(function(user){
+    if(user){
+      joinBtn.disabled = false;
+      joinBtn.textContent = 'চ্যাট শুরু করো';
+    }
+  });
 
   function safeKey(s){
     return s.trim().replace(/[.#$\[\]\/]/g, '_');
