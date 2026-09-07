@@ -335,55 +335,6 @@
     text-align:center;
   }
   .toast.show{ opacity:1; }
-
-  .call-overlay{
-    position: fixed;
-    inset: 0;
-    background: rgba(10,20,30,0.55);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index: 110;
-  }
-  .call-overlay.show{ display:flex; }
-  .call-box{
-    background: var(--panel);
-    border-radius: 20px;
-    padding: 32px 28px;
-    text-align:center;
-    min-width: 240px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
-  }
-  .call-status{
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 6px;
-  }
-  .call-name{
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 22px;
-    min-height: 1em;
-  }
-  .call-actions{
-    display:flex;
-    justify-content:center;
-    gap: 22px;
-  }
-  .call-btn{
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border:none;
-    font-size: 1.4rem;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-  }
-  .call-btn.decline{ background: var(--danger); color: #fff; }
-  .call-btn.accept{ background: var(--online); color: #fff; }
 </style>
 </head>
 <body>
@@ -417,7 +368,6 @@
         <div class="status"><span class="dot" id="presenceDot"></span><span id="presenceText">শুধু তুমি এখানে</span></div>
       </div>
       <div style="display:flex; align-items:center; gap:6px;">
-        <button class="icon-btn attach" id="callBtn" title="ভয়েস কল">📞</button>
         <button class="leave" id="leaveBtn">বের হও</button>
       </div>
     </div>
@@ -435,18 +385,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-
-  <div class="call-overlay" id="callOverlay">
-    <div class="call-box">
-      <div class="call-status" id="callStatusText">কল হচ্ছে...</div>
-      <div class="call-name" id="callName"></div>
-      <div class="call-actions">
-        <button class="call-btn decline" id="callDeclineBtn">✕</button>
-        <button class="call-btn accept" id="callAcceptBtn" style="display:none;">📞</button>
-      </div>
-    </div>
-  </div>
-  <audio id="remoteAudio" autoplay></audio>
 </div>
 
 <div class="lightbox" id="lightbox">
@@ -500,101 +438,6 @@
   const lightboxImg = document.getElementById('lightboxImg');
   const lightboxClose = document.getElementById('lightboxClose');
   const lightboxDownload = document.getElementById('lightboxDownload');
-  const callBtn = document.getElementById('callBtn');
-  const callOverlay = document.getElementById('callOverlay');
-  const callStatusText = document.getElementById('callStatusText');
-  const callNameEl = document.getElementById('callName');
-  const callAcceptBtn = document.getElementById('callAcceptBtn');
-  const callDeclineBtn = document.getElementById('callDeclineBtn');
-  const remoteAudio = document.getElementById('remoteAudio');
-  const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-  let pc = null;
-  let localStream = null;
-  let callRef = null;
-  let callState = 'idle';
-  let currentCallRole = null;
-  let pendingOfferData = null;
-
-  function showCallOverlay(status, nameText, showAccept){
-    callStatusText.textContent = status;
-    callNameEl.textContent = nameText || '';
-    callAcceptBtn.style.display = showAccept ? 'flex' : 'none';
-    callOverlay.classList.add('show');
-  }
-  function hideCallOverlay(){
-    callOverlay.classList.remove('show');
-  }
-  function cleanupCall(){
-    if(pc){ try{ pc.close(); }catch(e){} pc = null; }
-    if(localStream){ localStream.getTracks().forEach(function(t){ t.stop(); }); localStream = null; }
-    remoteAudio.srcObject = null;
-    currentCallRole = null;
-    pendingOfferData = null;
-    hideCallOverlay();
-  }
-  async function startCall(){
-    if(callState !== 'idle') return;
-    try{
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    }catch(e){
-      showToast('মাইক্রোফোন অনুমতি পাওয়া যায়নি');
-      return;
-    }
-    currentCallRole = 'caller';
-    callState = 'calling';
-    pc = new RTCPeerConnection(rtcConfig);
-    localStream.getTracks().forEach(function(t){ pc.addTrack(t, localStream); });
-    pc.ontrack = function(e){ remoteAudio.srcObject = e.streams[0]; };
-    pc.onicecandidate = function(e){
-      if(e.candidate) callRef.child('callerCandidates').push(e.candidate.toJSON());
-    };
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await callRef.set({ status: 'ringing', caller: name, offer: { sdp: offer.sdp, type: offer.type } });
-    showCallOverlay('কল হচ্ছে...', '', false);
-  }
-  async function acceptIncomingCall(){
-    if(!pendingOfferData) return;
-    try{
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    }catch(e){
-      showToast('মাইক্রোফোন অনুমতি পাওয়া যায়নি');
-      rejectIncomingCall();
-      return;
-    }
-    currentCallRole = 'callee';
-    pc = new RTCPeerConnection(rtcConfig);
-    localStream.getTracks().forEach(function(t){ pc.addTrack(t, localStream); });
-    pc.ontrack = function(e){ remoteAudio.srcObject = e.streams[0]; };
-    pc.onicecandidate = function(e){
-      if(e.candidate) callRef.child('calleeCandidates').push(e.candidate.toJSON());
-    };
-    await pc.setRemoteDescription(new RTCSessionDescription(pendingOfferData));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await callRef.update({ status: 'active', answer: { sdp: answer.sdp, type: answer.type } });
-    callState = 'active';
-    showCallOverlay('কলে আছো', '', false);
-  }
-  function rejectIncomingCall(){
-    if(callRef) callRef.set(null);
-    cleanupCall();
-    callState = 'idle';
-  }
-  function hangUp(){
-    if(callRef) callRef.set(null);
-    cleanupCall();
-    callState = 'idle';
-  }
-  callBtn.addEventListener('click', function(){
-    if(callState === 'idle') startCall();
-    else hangUp();
-  });
-  callAcceptBtn.addEventListener('click', acceptIncomingCall);
-  callDeclineBtn.addEventListener('click', function(){
-    if(callState === 'incoming') rejectIncomingCall();
-    else hangUp();
-  });
 
   function openLightbox(src){
     lightboxImg.src = src;
@@ -832,36 +675,6 @@
       otherLastSeen = maxOther;
       updateTicksFromLastSeen();
     });
-
-    callRef = db.ref('rooms/' + room + '/call');
-    callRef.on('value', async function(snapshot){
-      const val = snapshot.val();
-      if(!val){
-        if(callState !== 'idle'){ cleanupCall(); callState = 'idle'; }
-        return;
-      }
-      if(val.status === 'ringing' && val.caller !== name && callState === 'idle'){
-        callState = 'incoming';
-        pendingOfferData = val.offer;
-        showCallOverlay(val.caller + ' কল করছে তোমাকে', '', true);
-      }
-      if(val.status === 'active' && val.answer && currentCallRole === 'caller' && pc && !pc.currentRemoteDescription){
-        await pc.setRemoteDescription(new RTCSessionDescription(val.answer));
-        callState = 'active';
-        showCallOverlay('কলে আছো', '', false);
-      }
-      if(val.status === 'ended'){
-        if(callState !== 'idle') showToast('কল শেষ হয়েছে');
-        cleanupCall();
-        callState = 'idle';
-      }
-    });
-    callRef.child('callerCandidates').on('child_added', function(snapshot){
-      if(pc && currentCallRole === 'callee') pc.addIceCandidate(new RTCIceCandidate(snapshot.val())).catch(function(){});
-    });
-    callRef.child('calleeCandidates').on('child_added', function(snapshot){
-      if(pc && currentCallRole === 'caller') pc.addIceCandidate(new RTCIceCandidate(snapshot.val())).catch(function(){});
-    });
   });
 
   [nameInput, roomInput].forEach(function(inp){
@@ -915,13 +728,6 @@
     if(messagesRef) messagesRef.off();
     if(roomPresenceRef) roomPresenceRef.off();
     if(presenceRef) presenceRef.remove();
-    if(callRef){
-      callRef.off();
-      callRef.child('callerCandidates').off();
-      callRef.child('calleeCandidates').off();
-    }
-    cleanupCall();
-    callState = 'idle';
     Object.keys(messageRows).forEach(function(k){ delete messageRows[k]; });
     Object.keys(sentTicks).forEach(function(k){ delete sentTicks[k]; });
     otherLastSeen = 0;
