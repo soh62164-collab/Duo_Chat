@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
+<title>দুইজন</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<meta name="theme-color" content="#e6ecf0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="দুইজন">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<style>
+  :root{
+    --bg: #e6ecf0;
+    --panel: #fdfefe;
+    --panel-raised: #edf2f5;
+    --sent: #2f6fa8;
+    --sent-text: #ffffff;
+    --received: #d7ecf2;
+    --text: #16324f;
+    --text-muted: #718696;
+    --gold: #c9a97a;
+    --danger: #c1685c;
+    --online: #2fa6ba;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  html{
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding: 0;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  input, textarea{
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .bubble{
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .app{
+    width:100%;
+    max-width:100%;
+    height: 100vh;
+    background: var(--panel);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    position: relative;
+    padding-top: max(22px, env(safe-area-inset-top, 22px));
+    padding-bottom: max(28px, env(safe-area-inset-bottom, 28px));
+  }
+
+  .join{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    height:100%;
+    padding: calc(40px + env(safe-area-inset-top, 0px)) 32px calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  .join h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 2.1rem;
+    margin: 0 0 6px;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .join p.tagline{
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin: 0 0 32px;
+    line-height:1.5;
+    max-width: 30ch;
+  }
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .field input{
+    width:100%;
+    background: var(--panel-raised);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: var(--text);
+    padding: 13px 14px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus{ border-color: var(--gold); }
+  .join .btn{
+    margin-top: 12px;
+    width:100%;
+    background: var(--sent);
+    color: var(--sent-text);
+    border:none;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor:pointer;
+    transition: transform 0.1s, opacity 0.15s;
+  }
+  .join .btn:active{ transform: scale(0.98); }
+  .join .btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .hint{
+    margin-top: 18px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height:1.6;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    padding-top: 16px;
+  }
+  .hint b{ color: var(--gold); font-weight:600; }
+  .error{
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 10px;
+    min-height: 1.2em;
+  }
+
+  .chat{ display:none; flex-direction:column; height:100%; }
+  .chat.active{ display:flex; }
+  .chat-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 16px;
+    background: var(--panel-raised);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .chat-header .room-info h2{
+    font-family:'Fraunces', serif;
+    font-size: 1.05rem;
+    margin:0;
+    font-weight:600;
+  }
+  .chat-header .room-info .status{
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top:2px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .dot{ width:7px; height:7px; border-radius:50%; background: var(--text-muted); flex-shrink:0; }
+  .dot.online{ background: var(--online); box-shadow: 0 0 0 3px rgba(123,201,154,0.18); }
+  .leave{
+    background:none;
+    border:none;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    cursor:pointer;
+    padding: 6px 10px;
+  }
+  .leave:hover{ color: var(--danger); }
+
+  .messages{
+    flex:1;
+    overflow-y:auto;
+    padding: 18px;
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+  }
+  .bubble-row{ display:flex; }
+  .bubble-row.mine{ justify-content:flex-end; }
+  .bubble{
+    max-width: 76%;
+    padding: 10px 13px;
+    border-radius: 16px;
+    font-size: 0.95rem;
+    line-height:1.45;
+    word-wrap:break-word;
+  }
+  .bubble-row.mine .bubble{
+    background: var(--sent);
+    color: var(--sent-text);
+    border-bottom-right-radius: 4px;
+  }
+  .bubble-row.theirs .bubble{
+    background: var(--received);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble img{
+    max-width: 100%;
+    border-radius: 10px;
+    display:block;
+    margin-top: 4px;
+    cursor: pointer;
+  }
+
+  .lightbox{
+    position: fixed;
+    inset: 0;
+    background: rgba(10,11,16,0.92);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .lightbox.show{ display:flex; }
+  .lightbox img{
+    max-width: 100%;
+    max-height: 78vh;
+    border-radius: 10px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  }
+  .lightbox-bar{
+    position:absolute;
+    top: max(18px, env(safe-area-inset-top, 18px));
+    right: 18px;
+    display:flex;
+    gap: 10px;
+  }
+  .lightbox-btn{
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.18);
+    color: #f5f5f5;
+    font-size: 1.1rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+  .lightbox-btn:active{ background: rgba(255,255,255,0.32); }
+  .bubble .time{
+    display:block;
+    font-size: 0.68rem;
+    opacity:0.6;
+    margin-top: 4px;
+  }
+  .tick{
+    margin-left: 4px;
+    letter-spacing: -1px;
+  }
+  .tick.seen{ color: var(--gold); opacity:1; }
+  .del-btn{
+    margin-left: 6px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.72rem;
+    opacity: 0.55;
+    cursor: pointer;
+    vertical-align: middle;
+  }
+  .del-btn:active{ opacity: 1; }
+  .empty-state{
+    margin: auto;
+    text-align:center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    max-width: 26ch;
+    line-height:1.6;
+  }
+
+  .composer{
+    display:flex;
+    align-items:flex-end;
+    gap: 8px;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel-raised);
+    border-top: 1px solid rgba(0,0,0,0.06);
+  }
+  .composer input[type="text"]{
+    flex:1;
+    background: var(--bg);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline:none;
+  }
+  .composer input[type="text"]:focus{ border-color: var(--gold); }
+  .icon-btn{
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+    font-size: 1.1rem;
+  }
+  .icon-btn.attach{ background: var(--received); color: var(--text); }
+  .icon-btn.send{ background: var(--sent); color: var(--sent-text); }
+  .icon-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  #fileInput{ display:none; }
+
+  .toast{
+    position:absolute;
+    bottom: 90px;
+    left:50%;
+    transform: translateX(-50%);
+    background: var(--panel-raised);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(0,0,0,0.1);
+    opacity:0;
+    pointer-events:none;
+    transition: opacity 0.2s;
+    z-index: 10;
+    max-width: 85%;
+    text-align:center;
+  }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <div class="join" id="joinScreen">
+    <h1>দুইজন</h1>
+    <p class="tagline">একটা ইনবক্স কোড আর দুটো ফোন — শুধু তোমাদের দুজনের কথা।</p>
+
+    <div class="field">
+      <label for="nameInput">তোমার নাম</label>
+      <input type="text" id="nameInput" placeholder="তোমার নাম লেখো" maxlength="24">
+    </div>
+    <div class="field">
+      <label for="roomInput">ইনবক্স কোড</label>
+      <input type="text" id="roomInput" placeholder="দুজনে একই কোড দাও, যেমনঃ mon-2026" maxlength="40">
+    </div>
+    <button class="btn" id="joinBtn">চ্যাট শুরু করো</button>
+    <div class="error" id="joinError"></div>
+
+    <div class="hint">
+      দুজনেই একই কোড দিয়ে ঢুকলে একে অপরের মেসেজ ও ছবি রিয়েল-টাইমে দেখতে পাবে। ভয়েস/ভিডিও কল এখনো এই সংস্করণে নেই — শুধু লেখা আর ছবি।
+    </div>
+  </div>
+
+  <div class="chat" id="chatScreen">
+    <div class="chat-header">
+      <div class="room-info">
+        <h2 id="roomTitle">ইনবক্স</h2>
+        <div class="status"><span class="dot" id="presenceDot"></span><span id="presenceText">শুধু তুমি এখানে</span></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button class="leave" id="leaveBtn">বের হও</button>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="empty-state" id="emptyState">এখনো কোনো মেসেজ নেই। প্রথম মেসেজটা তুমিই পাঠাও।</div>
+    </div>
+
+    <div class="composer">
+      <button class="icon-btn attach" id="attachBtn" title="ছবি পাঠাও">📎</button>
+      <input type="file" id="fileInput" accept="image/*">
+      <input type="text" id="textInput" placeholder="একটা মেসেজ লেখো..." maxlength="1000">
+      <button class="icon-btn send" id="sendBtn">➤</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-bar">
+    <button class="lightbox-btn" id="lightboxClose" title="বন্ধ করো">✕</button>
+  </div>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+(function(){
+  // ---- Firebase setup ----
+  const firebaseConfig = {
+    apiKey: "AIzaSyCv5jJKd6zQ6LQgbaIevWdRSdL6yKGiUyM",
+    authDomain: "amader-chat-d02d7.firebaseapp.com",
+    databaseURL: "https://amader-chat-d02d7-default-rtdb.firebaseio.com/",
+    projectId: "amader-chat-d02d7",
+    storageBucket: "amader-chat-d02d7.firebasestorage.app",
+    messagingSenderId: "676033131206",
+    appId: "1:676033131206:web:70a4104630ea45b2f61dc7"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
+
+  let name = '';
+  let room = '';
+  let messagesRef = null;
+  let presenceRef = null;
+  let roomPresenceRef = null;
+
+  const joinScreen = document.getElementById('joinScreen');
+  const chatScreen = document.getElementById('chatScreen');
+  const nameInput = document.getElementById('nameInput');
+  const roomInput = document.getElementById('roomInput');
+  const joinBtn = document.getElementById('joinBtn');
+  const joinError = document.getElementById('joinError');
+  const roomTitle = document.getElementById('roomTitle');
+  const presenceDot = document.getElementById('presenceDot');
+  const presenceText = document.getElementById('presenceText');
+  const messagesEl = document.getElementById('messages');
+  const emptyState = document.getElementById('emptyState');
+  const textInput = document.getElementById('textInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const attachBtn = document.getElementById('attachBtn');
+  const fileInput = document.getElementById('fileInput');
+  const leaveBtn = document.getElementById('leaveBtn');
+  const toast = document.getElementById('toast');
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxClose = document.getElementById('lightboxClose');
+
+  function openLightbox(src){
+    lightboxImg.src = src;
+    lightbox.classList.add('show');
+  }
+  function closeLightbox(){
+    lightbox.classList.remove('show');
+    lightboxImg.src = '';
+  }
+  lightboxClose.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', function(e){
+    if(e.target === lightbox) closeLightbox();
+  });
+
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(()=> toast.classList.remove('show'), 2800);
+  }
+
+  joinBtn.disabled = true;
+  joinBtn.textContent = 'লোড হচ্ছে...';
+  auth.signInAnonymously().catch(function(){
+    joinError.textContent = 'সংযোগ করতে সমস্যা হয়েছে, পেজ রিলোড করো';
+  });
+  auth.onAuthStateChanged(function(user){
+    if(user){
+      joinBtn.disabled = false;
+      joinBtn.textContent = 'চ্যাট শুরু করো';
+    }
+  });
+
+  function safeKey(s){
+    return s.trim().replace(/[.#$\[\]\/]/g, '_');
+  }
+
+  function formatTime(ts){
+    if(!ts) return '';
+    const d = new Date(ts);
+    return d.toLocaleTimeString('bn-BD', { hour: '2-digit', minute:'2-digit' });
+  }
+
+  const sentTicks = {};
+  const messageRows = {};
+  let otherLastSeen = 0;
+
+  function scrollToBottom(){
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function updateTicksFromLastSeen(){
+    Object.keys(sentTicks).forEach(function(key){
+      const item = sentTicks[key];
+      if(item.time && otherLastSeen >= item.time){
+        item.el.textContent = '✓✓';
+        item.el.classList.add('seen');
+      }
+    });
+  }
+
+  function showEmptyStateIfNeeded(){
+    const anyBubble = messagesEl.querySelector('.bubble-row');
+    if(!anyBubble && !document.getElementById('emptyState')){
+      const es = document.createElement('div');
+      es.className = 'empty-state';
+      es.id = 'emptyState';
+      es.textContent = 'এখনো কোনো মেসেজ নেই। প্রথম মেসেজটা তুমিই পাঠাও।';
+      messagesEl.appendChild(es);
+    }
+  }
+
+  function removeMessage(key){
+    const row = messageRows[key];
+    if(row && row.parentNode){
+      row.parentNode.removeChild(row);
+    }
+    delete messageRows[key];
+    delete sentTicks[key];
+    showEmptyStateIfNeeded();
+  }
+
+  function appendMessage(m, key){
+    if(emptyState.parentNode) emptyState.remove();
+    const isMine = m.sender === name;
+    const wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 100;
+
+    const row = document.createElement('div');
+    row.className = 'bubble-row ' + (isMine ? 'mine' : 'theirs');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    if(m.text){
+      const p = document.createElement('div');
+      p.textContent = m.text;
+      bubble.appendChild(p);
+    }
+    if(m.image){
+      const img = document.createElement('img');
+      img.src = m.image;
+      img.onload = function(){
+        if(isMine || wasNearBottom) scrollToBottom();
+      };
+      img.addEventListener('click', function(){
+        openLightbox(m.image);
+      });
+      bubble.appendChild(img);
+    }
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = (isMine ? 'তুমি' : m.sender) + (m.time ? ' · ' + formatTime(m.time) : '');
+    if(isMine){
+      const tick = document.createElement('span');
+      tick.className = 'tick';
+      tick.textContent = '✓';
+      if(m.time && otherLastSeen >= m.time){
+        tick.textContent = '✓✓';
+        tick.classList.add('seen');
+      }
+      time.appendChild(tick);
+      if(key) sentTicks[key] = { time: m.time, el: tick };
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'del-btn';
+      delBtn.textContent = '🗑 মুছে ফেলো';
+      delBtn.addEventListener('click', function(){
+        if(confirm('এই মেসেজটা দুজনের কাছ থেকেই মুছে ফেলতে চাও?')){
+          if(key) messagesRef.child(key).remove();
+        }
+      });
+      time.appendChild(delBtn);
+    }
+    bubble.appendChild(time);
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    if(key) messageRows[key] = row;
+
+    if(isMine || wasNearBottom) scrollToBottom();
+  }
+
+  function resizeImage(file, callback){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const img = new Image();
+      img.onload = function(){
+        const maxDim = 900;
+        let w = img.width, h = img.height;
+        if(w > maxDim || h > maxDim){
+          if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else{ w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        callback(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  joinBtn.addEventListener('click', function(){
+    const n = nameInput.value.trim();
+    const r = roomInput.value.trim();
+    if(!n || !r){
+      joinError.textContent = 'তোমার নাম আর ইনবক্স কোড দুটোই লাগবে';
+      return;
+    }
+    joinError.textContent = '';
+    name = n;
+    room = safeKey(r);
+    joinBtn.disabled = true;
+    joinBtn.textContent = 'ঢুকছে...';
+
+    roomTitle.textContent = 'ইনবক্স: ' + r;
+    joinScreen.style.display = 'none';
+    chatScreen.classList.add('active');
+
+    const myKey = safeKey(name);
+    messagesRef = db.ref('rooms/' + room + '/messages');
+    presenceRef = db.ref('rooms/' + room + '/presence/' + myKey);
+    roomPresenceRef = db.ref('rooms/' + room + '/presence');
+    const myLastSeenRef = db.ref('rooms/' + room + '/lastSeen/' + myKey);
+    const roomLastSeenRef = db.ref('rooms/' + room + '/lastSeen');
+
+    function markSeen(){
+      myLastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+    }
+
+    messagesRef.on('child_added', function(snapshot){
+      appendMessage(snapshot.val(), snapshot.key);
+      if(document.visibilityState === 'visible') markSeen();
+    });
+
+    messagesRef.on('child_removed', function(snapshot){
+      removeMessage(snapshot.key);
+    });
+
+    presenceRef.set(true);
+    presenceRef.onDisconnect().remove();
+    markSeen();
+
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') markSeen();
+    });
+    window.addEventListener('focus', markSeen);
+
+    roomPresenceRef.on('value', function(snapshot){
+      const val = snapshot.val() || {};
+      const others = Object.keys(val).filter(function(k){ return k !== myKey; });
+      if(others.length > 0){
+        presenceDot.classList.add('online');
+        presenceText.textContent = 'অন্যজন এখন আছে';
+      } else {
+        presenceDot.classList.remove('online');
+        presenceText.textContent = 'শুধু তুমি এখানে';
+      }
+    });
+
+    roomLastSeenRef.on('value', function(snapshot){
+      const val = snapshot.val() || {};
+      let maxOther = 0;
+      Object.keys(val).forEach(function(k){
+        if(k !== myKey && typeof val[k] === 'number' && val[k] > maxOther){
+          maxOther = val[k];
+        }
+      });
+      otherLastSeen = maxOther;
+      updateTicksFromLastSeen();
+    });
+  });
+
+  [nameInput, roomInput].forEach(function(inp){
+    inp.addEventListener('keydown', function(e){
+      if(e.key === 'Enter') joinBtn.click();
+    });
+  });
+
+  function sendMessage(text, imageDataUrl){
+    if(!text && !imageDataUrl) return;
+    if(!messagesRef) return;
+    messagesRef.push({
+      sender: name,
+      text: text || '',
+      image: imageDataUrl || null,
+      time: firebase.database.ServerValue.TIMESTAMP
+    }).catch(function(){
+      showToast('পাঠাতে সমস্যা হয়েছে, আবার চেষ্টা করো');
+    });
+  }
+
+  sendBtn.addEventListener('click', function(){
+    const text = textInput.value.trim();
+    if(!text) return;
+    textInput.value = '';
+    sendMessage(text, null);
+  });
+
+  textInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ sendBtn.click(); }
+  });
+
+  attachBtn.addEventListener('click', function(){ fileInput.click(); });
+
+  fileInput.addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 8 * 1024 * 1024){
+      showToast('ছবিটা অনেক বড়, একটু ছোট ছবি দাও');
+      fileInput.value = '';
+      return;
+    }
+    showToast('ছবি পাঠানো হচ্ছে...');
+    resizeImage(file, function(dataUrl){
+      sendMessage('', dataUrl);
+    });
+    fileInput.value = '';
+  });
+
+  leaveBtn.addEventListener('click', function(){
+    if(messagesRef) messagesRef.off();
+    if(roomPresenceRef) roomPresenceRef.off();
+    if(presenceRef) presenceRef.remove();
+    Object.keys(messageRows).forEach(function(k){ delete messageRows[k]; });
+    Object.keys(sentTicks).forEach(function(k){ delete sentTicks[k]; });
+    otherLastSeen = 0;
+    messagesEl.innerHTML = '';
+    const es = document.createElement('div');
+    es.className = 'empty-state';
+    es.id = 'emptyState';
+    es.textContent = 'এখনো কোনো মেসেজ নেই। প্রথম মেসেজটা তুমিই পাঠাও।';
+    messagesEl.appendChild(es);
+    chatScreen.classList.remove('active');
+    joinScreen.style.display = 'flex';
+    joinBtn.disabled = false;
+    joinBtn.textContent = 'চ্যাট শুরু করো';
+  });
+})();
+
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+
+</body>
+</html>
